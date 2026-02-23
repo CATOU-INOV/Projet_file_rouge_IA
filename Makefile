@@ -1,10 +1,13 @@
 .PHONY: help setup data train benchmark serve test docker-build docker-up docker-down k8s-deploy k8s-delete
 
-PYTHON := python3
+PYTHON := python3.13
+VENV   := .venv
+PY     := $(VENV)/bin/python
+PIP    := $(VENV)/bin/pip
 
 help:
 	@echo "Projet Fil Rouge MLOps - Maintenance Predictive IoT"
-	@echo "  setup       Installer les dependances"
+	@echo "  setup       Installer les dependances (venv Python 3.13)"
 	@echo "  data        Telecharger et preparer le dataset"
 	@echo "  train       Entrainer un modele (defaut: xgboost)"
 	@echo "  benchmark   Lancer le benchmark complet (5 modeles)"
@@ -15,25 +18,28 @@ help:
 	@echo "  k8s-deploy  Deployer sur Kubernetes local"
 
 setup:
-	$(PYTHON) -m pip install -r requirements.txt
+	$(PYTHON) -m venv $(VENV)
+	$(PIP) install --upgrade pip
+	$(PIP) install -r requirements.txt
 	cp -n .env.example .env 2>/dev/null || true
+	@echo "Setup termine. Activez le venv : source .venv/bin/activate"
 
 data:
-	$(PYTHON) data/download_data.py
-	$(PYTHON) -m src.data.ingestion
-	$(PYTHON) -m src.data.features
+	$(PY) data/download_data.py
+	$(PY) -m src.data.ingestion
+	$(PY) -m src.data.features
 
 train:
-	$(PYTHON) -m src.training.train --model xgboost
+	$(PY) -m src.training.train --model xgboost
 
 benchmark:
-	$(PYTHON) -m src.training.benchmark
+	$(PY) -m src.training.benchmark
 
 serve:
-	cd src/serving && uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+	$(VENV)/bin/uvicorn src.serving.app:app --host 0.0.0.0 --port 8000 --reload
 
 test:
-	$(PYTHON) -m pytest tests/ -v --tb=short
+	$(PY) -m pytest tests/ -v --tb=short
 
 docker-build:
 	docker compose build
