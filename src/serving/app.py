@@ -7,13 +7,14 @@ from contextlib import asynccontextmanager
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 import mlflow
 import mlflow.pyfunc
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from prometheus_client import Counter, Histogram, generate_latest
 
-from src.config import MLFLOW_TRACKING_URI, MODEL_NAME, EXPERIMENT_NAME
+from src.config import MLFLOW_TRACKING_URI, MODEL_NAME, EXPERIMENT_NAME, FEATURE_DIR
 from src.serving.schemas import (
     SensorInput,
     PredictionResponse,
@@ -36,6 +37,8 @@ PREDICTION_ERRORS = Counter("prediction_errors", "Nombre d erreurs de prediction
 _model = None
 _model_version: Optional[str] = None
 _model_name: Optional[str] = None
+_feature_df: Optional[pd.DataFrame] = None
+_feature_cols: Optional[list] = None
 
 
 def _load_model_from_mlflow():
@@ -76,10 +79,29 @@ def _load_model_from_mlflow():
         logger.warning("Aucun modèle MLflow disponible – mode dégradé.")
 
 
+def _load_feature_data():
+    """Charger les features pré-calculées depuis le Parquet."""
+    global _feature_df, _feature_cols
+    train_path = FEATURE_DIR / "train_FD001_featured.parquet"
+    test_path = FEATURE_DIR / "test_FD001_featured.parquet"
+    dfs = []
+    for p in [train_path, test_path]:
+        if p.exists():
+            dfs.append(pd.read_parquet(p))
+    if dfs:
+        _feature_df = pd.concat(dfs, ignore_index=True)
+        exclude = {"unit_id", "cycle", "rul"}
+        _feature_cols = [c for c in _feature_df.columns if c not in exclude]
+        logger.info(f"Features chargées: {len(_feature_df)} lignes, {len(_feature_cols)} features")
+    else:
+        logger.warning("Aucun fichier de features trouvé. Lancez: make data")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Charger le modèle MLflow au démarrage."""
+    """Charger le modèle MLflow et les features au démarrage."""
     _load_model_from_mlflow()
+    _load_feature_data()
     yield
 
 
@@ -90,19 +112,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── Colonnes de features attendues (mêmes que lors de l'entraînement) ────────
-SENSOR_FIELDS = [
-    "setting_1", "setting_2", "setting_3",
-    "sensor_2", "sensor_3", "sensor_4", "sensor_7", "sensor_8", "sensor_9",
-    "sensor_11", "sensor_12", "sensor_13", "sensor_14", "sensor_15",
-    "sensor_17", "sensor_20", "sensor_21",
-]
-
-
 def _input_to_array(data: SensorInput) -> np.ndarray:
-    """Convertir SensorInput en vecteur numpy."""
-    values = [getattr(data, f) for f in SENSOR_FIELDS]
-    return np.array(values, dtype=np.float32).reshape(1, -1)
+    """Récupérer le vecteur de features depuis le Parquet pré-calculé."""
+    if _feature_df is None or _feature_cols is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Features non chargées. Lancez: make data",
+        )
+    mask = (_feature_df["unit_id"] == data.unit_id) & (_feature_df["cycle"] == data.cycle)
+    rows = _feature_df[mask]
+    if rows.empty:
+        raise HTTPException(
+            status_code=404,
+            detail=f"unit_id={data.unit_id}, cycle={data.cycle} introuvable dans les données. "
+                   f"Utilisez un unit_id entre 1-100 et un cycle existant.",
+        )
+    return rows[_feature_cols].values[:1].astype(np.float32)
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
