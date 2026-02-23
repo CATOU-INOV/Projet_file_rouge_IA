@@ -1,8 +1,10 @@
 """Configuration centralisee du projet."""
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(ROOT_DIR / ".env")
 DATA_DIR = ROOT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
 FEATURE_DIR = DATA_DIR / "features"
