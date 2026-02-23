@@ -1,0 +1,6 @@
+# TODO: Scraper l API sur port 8000, endpoint /metrics
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: "turbofan-api"
+    # TODO: targets, metrics_path

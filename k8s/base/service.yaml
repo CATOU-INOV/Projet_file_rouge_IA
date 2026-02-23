@@ -1,0 +1,7 @@
+# TODO: Completez
+apiVersion: v1
+kind: Service
+metadata:
+  name: turbofan-api-svc
+spec:
+  # TODO: type ClusterIP, selector, ports 80->8000

@@ -1,0 +1,38 @@
+# TODO: Completez ce Docker Compose (6 services: postgres, minio, mlflow, api, prometheus, grafana)
+version: "3.8"
+
+networks:
+  mlops-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  minio-data:
+  grafana-data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    # TODO
+
+  minio:
+    image: minio/minio:latest
+    # TODO
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.16.0
+    # TODO
+
+  api:
+    build:
+      context: .
+      dockerfile: src/serving/Dockerfile
+    # TODO
+
+  prometheus:
+    image: prom/prometheus:latest
+    # TODO
+
+  grafana:
+    image: grafana/grafana:latest
+    # TODO

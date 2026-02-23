@@ -1,0 +1,7 @@
+# TODO
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: turbofan-config
+data:
+  # TODO: MLFLOW_TRACKING_URI, MODEL_NAME, API_PORT

@@ -1,0 +1,23 @@
+# TODO: Completez (replicas:2, resources, probes, envFrom configmap)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: turbofan-api
+  labels:
+    app: turbofan-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: turbofan-api
+  template:
+    metadata:
+      labels:
+        app: turbofan-api
+    spec:
+      containers:
+        - name: api
+          image: turbofan-api:latest
+          ports:
+            - containerPort: 8000
+          # TODO: resources, probes, envFrom

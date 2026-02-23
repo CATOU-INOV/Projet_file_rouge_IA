@@ -1,0 +1,7 @@
+# TODO: min 2, max 8, CPU 70%
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: turbofan-api-hpa
+spec:
+  # TODO
