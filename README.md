@@ -38,7 +38,7 @@ CSV (NASA C-MAPSS)
 
 ### Prérequis
 
-- Python 3.11+
+- Python 3.13 (via Homebrew : `brew install python@3.13`)
 - Docker & Docker Compose
 - (optionnel) kubectl + Kind/Minikube pour K8s
 
@@ -71,7 +71,7 @@ Services disponibles :
 | API        | http://localhost:8000/docs   | –            |
 | MLflow     | http://localhost:5000        | –            |
 | MinIO      | http://localhost:9001        | minioadmin / minioadmin |
-| Prometheus | http://localhost:9090        | –            |
+| Prometheus | http://localhost:9091        | –            |
 | Grafana    | http://localhost:3000        | admin / admin |
 
 ### 4. Benchmark (5 modèles)
@@ -82,6 +82,14 @@ make benchmark
 
 Lance RF, XGBoost, LightGBM, LSTM et CNN1D. Les métriques sont trackées dans MLflow
 et un CSV comparatif est sauvegardé dans `data/features/benchmark_*.csv`.
+
+> **Note** : LSTM et CNN1D requièrent TensorFlow, non compatible Python 3.13.
+> Résultats obtenus sur les 3 modèles tabulaires :
+> | Modèle | MAE | RMSE | R² | sMAPE |
+> |--------|-----|------|-----|-------|
+> | XGBoost | **3.07** | **4.52** | **0.988** | 5.96% |
+> | LightGBM | 3.52 | 4.97 | 0.985 | 7.15% |
+> | Random Forest | 4.50 | 6.60 | 0.974 | 7.70% |
 
 ### 5. Tests
 
