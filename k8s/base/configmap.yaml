@@ -1,7 +1,12 @@
-# TODO
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: turbofan-config
+  labels:
+    app: turbofan-api
 data:
-  # TODO: MLFLOW_TRACKING_URI, MODEL_NAME, API_PORT
+  MLFLOW_TRACKING_URI: "http://mlflow-svc:5000"
+  MODEL_NAME: "turbofan_rul_predictor"
+  MODEL_STAGE: "Production"
+  API_HOST: "0.0.0.0"
+  API_PORT: "8000"

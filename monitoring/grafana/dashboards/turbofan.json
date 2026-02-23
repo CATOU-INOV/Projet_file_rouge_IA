@@ -1,0 +1,98 @@
+{
+  "title": "Turbofan RUL - MLOps Dashboard",
+  "uid": "turbofan-rul",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "10s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total de prédictions",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus"},
+          "expr": "prediction_count_total",
+          "legendFormat": "Prédictions"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Taux d'erreurs",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus"},
+          "expr": "prediction_errors_total",
+          "legendFormat": "Erreurs"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Latence médiane des prédictions (ms)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus"},
+          "expr": "histogram_quantile(0.5, rate(prediction_latency_seconds_bucket[5m])) * 1000",
+          "legendFormat": "p50 latency"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Latence p95 des prédictions (ms)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus"},
+          "expr": "histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m])) * 1000",
+          "legendFormat": "p95 latency"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Prédictions par seconde",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus"},
+          "expr": "rate(prediction_count_total[1m])",
+          "legendFormat": "req/s"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Distribution de la latence (ms)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus"},
+          "expr": "histogram_quantile(0.5, rate(prediction_latency_seconds_bucket[5m])) * 1000",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": {"type": "prometheus"},
+          "expr": "histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m])) * 1000",
+          "legendFormat": "p95"
+        },
+        {
+          "datasource": {"type": "prometheus"},
+          "expr": "histogram_quantile(0.99, rate(prediction_latency_seconds_bucket[5m])) * 1000",
+          "legendFormat": "p99"
+        }
+      ]
+    }
+  ]
+}

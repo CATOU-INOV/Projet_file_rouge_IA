@@ -1,32 +1,30 @@
+# Stratégie Canary : 10% du trafic vers la nouvelle version
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: turbofan-api
+  name: turbofan-api-canary
   labels:
     app: turbofan-api
-    version: v1
+    track: canary
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: turbofan-api
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 1
-      maxSurge: 1
+      track: canary
   template:
     metadata:
       labels:
         app: turbofan-api
-        version: v1
+        track: canary
+        version: v2
     spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
       containers:
         - name: api
-          image: turbofan-api:latest
+          image: turbofan-api:canary
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
@@ -34,9 +32,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: turbofan-config
-            - secretRef:
-                name: turbofan-secret
-                optional: true
           resources:
             requests:
               cpu: "250m"
@@ -50,13 +45,9 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 30
-            timeoutSeconds: 5
-            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
             initialDelaySeconds: 10
             periodSeconds: 10
-            timeoutSeconds: 3
-            failureThreshold: 3

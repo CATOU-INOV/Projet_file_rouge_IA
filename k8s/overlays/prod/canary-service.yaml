@@ -1,0 +1,20 @@
+# Le Service principal sélectionne TOUS les pods app=turbofan-api
+# (stable + canary), répartissant le trafic proportionnellement aux réplicas.
+# Stable : 3 réplicas (~75%), Canary : 1 réplica (~25%)
+apiVersion: v1
+kind: Service
+metadata:
+  name: turbofan-api-svc
+  labels:
+    app: turbofan-api
+  annotations:
+    note: "Sélectionne stable (3 pods) + canary (1 pod) pour routing 75/25"
+spec:
+  type: ClusterIP
+  selector:
+    app: turbofan-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+      protocol: TCP
