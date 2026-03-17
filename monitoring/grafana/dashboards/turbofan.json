@@ -2,96 +2,193 @@
   "title": "Turbofan RUL - MLOps Dashboard",
   "uid": "turbofan-rul",
   "schemaVersion": 36,
-  "version": 1,
-  "refresh": "10s",
-  "time": {"from": "now-1h", "to": "now"},
+  "version": 2,
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"},
   "panels": [
+
     {
       "id": 1,
-      "title": "Total de prédictions",
+      "title": "Total prédictions",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
-      "targets": [
-        {
-          "datasource": {"type": "prometheus"},
-          "expr": "prediction_count_total",
-          "legendFormat": "Prédictions"
-        }
-      ]
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "options": {"colorMode": "background", "graphMode": "area", "textMode": "auto"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "blue", "value": null}]}}},
+      "targets": [{"datasource": {"type": "prometheus"}, "expr": "prediction_count_total", "legendFormat": "Total"}]
     },
     {
       "id": 2,
-      "title": "Taux d'erreurs",
+      "title": "Req/min",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
-      "targets": [
-        {
-          "datasource": {"type": "prometheus"},
-          "expr": "prediction_errors_total",
-          "legendFormat": "Erreurs"
-        }
-      ]
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "options": {"colorMode": "background", "graphMode": "area"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}]}}},
+      "targets": [{"datasource": {"type": "prometheus"}, "expr": "rate(prediction_count_total[1m]) * 60", "legendFormat": "req/min"}]
     },
     {
       "id": 3,
-      "title": "Latence médiane des prédictions (ms)",
+      "title": "Latence p50 (ms)",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
-      "targets": [
-        {
-          "datasource": {"type": "prometheus"},
-          "expr": "histogram_quantile(0.5, rate(prediction_latency_seconds_bucket[5m])) * 1000",
-          "legendFormat": "p50 latency"
-        }
-      ]
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "options": {"colorMode": "background", "graphMode": "area"},
+      "fieldConfig": {"defaults": {"unit": "ms", "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "red", "value": 200}]}}},
+      "targets": [{"datasource": {"type": "prometheus"}, "expr": "histogram_quantile(0.5, rate(prediction_latency_seconds_bucket[5m])) * 1000", "legendFormat": "p50"}]
     },
     {
       "id": 4,
-      "title": "Latence p95 des prédictions (ms)",
+      "title": "Latence p95 (ms)",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
-      "targets": [
-        {
-          "datasource": {"type": "prometheus"},
-          "expr": "histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m])) * 1000",
-          "legendFormat": "p95 latency"
-        }
-      ]
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "options": {"colorMode": "background", "graphMode": "area"},
+      "fieldConfig": {"defaults": {"unit": "ms", "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 100}, {"color": "red", "value": 500}]}}},
+      "targets": [{"datasource": {"type": "prometheus"}, "expr": "histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m])) * 1000", "legendFormat": "p95"}]
     },
     {
       "id": 5,
-      "title": "Prédictions par seconde",
-      "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "title": "Alertes moteurs",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 8, "x": 16, "y": 0},
+      "options": {"colorMode": "background", "graphMode": "none", "textMode": "value_and_name", "orientation": "horizontal"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}]}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "Critique (RUL<30)"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]},
+          {"matcher": {"id": "byName", "options": "Alerte (RUL 30-60)"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}]}
+        ]
+      },
       "targets": [
-        {
-          "datasource": {"type": "prometheus"},
-          "expr": "rate(prediction_count_total[1m])",
-          "legendFormat": "req/s"
-        }
+        {"datasource": {"type": "prometheus"}, "expr": "prediction_rul_critical_total", "legendFormat": "Critique (RUL<30)"},
+        {"datasource": {"type": "prometheus"}, "expr": "prediction_rul_warning_total", "legendFormat": "Alerte (RUL 30-60)"}
       ]
     },
+
     {
       "id": 6,
-      "title": "Distribution de la latence (ms)",
-      "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
-      "targets": [
-        {
-          "datasource": {"type": "prometheus"},
-          "expr": "histogram_quantile(0.5, rate(prediction_latency_seconds_bucket[5m])) * 1000",
-          "legendFormat": "p50"
-        },
-        {
-          "datasource": {"type": "prometheus"},
-          "expr": "histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[5m])) * 1000",
-          "legendFormat": "p95"
-        },
-        {
-          "datasource": {"type": "prometheus"},
-          "expr": "histogram_quantile(0.99, rate(prediction_latency_seconds_bucket[5m])) * 1000",
-          "legendFormat": "p99"
+      "title": "RUL predite (derniere valeur)",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 4},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "showThresholdLabels": true, "showThresholdMarkers": true},
+      "fieldConfig": {
+        "defaults": {
+          "min": 0, "max": 130, "displayName": "RUL (cycles)",
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "red", "value": null},
+            {"color": "orange", "value": 30},
+            {"color": "yellow", "value": 60},
+            {"color": "green", "value": 90}
+          ]}
         }
+      },
+      "targets": [{"datasource": {"type": "prometheus"}, "expr": "prediction_rul_last", "legendFormat": "RUL"}]
+    },
+
+    {
+      "id": 7,
+      "title": "Evolution de la RUL predite",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 10, "x": 6, "y": 4},
+      "options": {"tooltip": {"mode": "single"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"lineWidth": 2, "fillOpacity": 20}
+        }
+      },
+      "targets": [
+        {"datasource": {"type": "prometheus"}, "expr": "prediction_rul_last", "legendFormat": "RUL predite"},
+        {"datasource": {"type": "prometheus"}, "expr": "vector(30)", "legendFormat": "Seuil critique"},
+        {"datasource": {"type": "prometheus"}, "expr": "vector(60)", "legendFormat": "Seuil alerte"}
+      ]
+    },
+
+    {
+      "id": 8,
+      "title": "Erreurs de prediction",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 4},
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "red"}, "custom": {"lineWidth": 2, "fillOpacity": 20}}},
+      "targets": [{"datasource": {"type": "prometheus"}, "expr": "rate(prediction_errors_total[1m]) * 60", "legendFormat": "Erreurs/min"}]
+    },
+
+    {
+      "id": 11,
+      "title": "Score PSI (drift distribution)",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 20},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "showThresholdLabels": true, "showThresholdMarkers": true},
+      "fieldConfig": {
+        "defaults": {
+          "min": 0, "max": 0.3, "displayName": "PSI",
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 0.1},
+            {"color": "red", "value": 0.2}
+          ]}
+        }
+      },
+      "targets": [{"datasource": {"type": "prometheus"}, "expr": "data_drift_psi", "legendFormat": "PSI"}]
+    },
+
+    {
+      "id": 12,
+      "title": "Features en drift (KS-test)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 6, "y": 20},
+      "options": {"colorMode": "background", "graphMode": "none"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 5}]}}},
+      "targets": [{"datasource": {"type": "prometheus"}, "expr": "data_drift_features_count", "legendFormat": "Features"}]
+    },
+
+    {
+      "id": 13,
+      "title": "Drift detecte",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 10, "y": 20},
+      "options": {"colorMode": "background", "graphMode": "none", "textMode": "value_and_name"},
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "NON", "color": "green"}, "1": {"text": "OUI", "color": "red"}}}], "color": {"mode": "thresholds"}, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}},
+      "targets": [{"datasource": {"type": "prometheus"}, "expr": "data_drift_detected", "legendFormat": "Drift"}]
+    },
+
+    {
+      "id": 14,
+      "title": "Evolution PSI dans le temps",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 10, "x": 14, "y": 20},
+      "fieldConfig": {
+        "defaults": {"custom": {"lineWidth": 2, "fillOpacity": 15}},
+        "overrides": [
+          {"matcher": {"id": "byName", "options": "Seuil stable"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "green"}}, {"id": "custom.lineStyle", "value": {"fill": "dash"}}]},
+          {"matcher": {"id": "byName", "options": "Seuil drift"}, "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}, {"id": "custom.lineStyle", "value": {"fill": "dash"}}]}
+        ]
+      },
+      "targets": [
+        {"datasource": {"type": "prometheus"}, "expr": "data_drift_psi", "legendFormat": "PSI"},
+        {"datasource": {"type": "prometheus"}, "expr": "vector(0.1)", "legendFormat": "Seuil stable"},
+        {"datasource": {"type": "prometheus"}, "expr": "vector(0.2)", "legendFormat": "Seuil drift"}
+      ]
+    },
+
+    {
+      "id": 9,
+      "title": "Debit de predictions (req/sec)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "blue"}, "custom": {"lineWidth": 2, "fillOpacity": 15}}},
+      "targets": [{"datasource": {"type": "prometheus"}, "expr": "rate(prediction_count_total[30s])", "legendFormat": "req/s"}]
+    },
+
+    {
+      "id": 10,
+      "title": "Latence percentiles (ms)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "fieldConfig": {"defaults": {"unit": "ms", "custom": {"lineWidth": 2}}},
+      "targets": [
+        {"datasource": {"type": "prometheus"}, "expr": "histogram_quantile(0.5, rate(prediction_latency_seconds_bucket[2m])) * 1000", "legendFormat": "p50"},
+        {"datasource": {"type": "prometheus"}, "expr": "histogram_quantile(0.95, rate(prediction_latency_seconds_bucket[2m])) * 1000", "legendFormat": "p95"},
+        {"datasource": {"type": "prometheus"}, "expr": "histogram_quantile(0.99, rate(prediction_latency_seconds_bucket[2m])) * 1000", "legendFormat": "p99"}
       ]
     }
   ]

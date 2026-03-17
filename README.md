@@ -25,7 +25,7 @@ CSV (NASA C-MAPSS)
 |-----------------|--------------------------------------|
 | Données         | NASA C-MAPSS FD001 (Kaggle)          |
 | ML (tabulaire)  | RandomForest, XGBoost, LightGBM      |
-| ML (DL)         | LSTM, CNN1D (TensorFlow/Keras)       |
+| ML (DL)         | LSTM, CNN1D (PyTorch)                |
 | Tracking ML     | MLflow + PostgreSQL + MinIO (S3)     |
 | API             | FastAPI + Pydantic + Uvicorn         |
 | Monitoring      | Prometheus + Grafana                 |
@@ -69,7 +69,7 @@ Services disponibles :
 | Service    | URL                          | Identifiants |
 |------------|------------------------------|--------------|
 | API        | http://localhost:8000/docs   | –            |
-| MLflow     | http://localhost:5000        | –            |
+| MLflow     | http://localhost:5001        | –            |
 | MinIO      | http://localhost:9001        | minioadmin / minioadmin |
 | Prometheus | http://localhost:9091        | –            |
 | Grafana    | http://localhost:3000        | admin / admin |
@@ -83,8 +83,7 @@ make benchmark
 Lance RF, XGBoost, LightGBM, LSTM et CNN1D. Les métriques sont trackées dans MLflow
 et un CSV comparatif est sauvegardé dans `data/features/benchmark_*.csv`.
 
-> **Note** : LSTM et CNN1D requièrent TensorFlow, non compatible Python 3.13.
-> Résultats obtenus sur les 3 modèles tabulaires :
+> Résultats obtenus sur les modèles tabulaires (DL en cours de re-benchmark) :
 > | Modèle | MAE | RMSE | R² | sMAPE |
 > |--------|-----|------|-----|-------|
 > | XGBoost | **3.07** | **4.52** | **0.988** | 5.96% |
@@ -253,3 +252,67 @@ print(psi_result["interpretation"])  # "stable" | "moderate_change" | "significa
 - [x] Manifestes K8s valides (`kubectl apply --dry-run=client`)
 - [x] Au moins 5 fichiers de tests avec 20+ assertions
 - [x] Monitoring Prometheus/Grafana fonctionnel avec dashboard auto-provisionné
+
+---
+
+## Portfolio
+
+Ce projet illustre une chaîne MLOps complète, de la donnée brute au monitoring en production.
+
+### Compétences démontrées
+
+| Domaine | Détail |
+|---|---|
+| **Machine Learning** | Benchmark 5 modèles, cross-validation, feature engineering (rolling, delta, EMA) |
+| **MLOps** | MLflow tracking & registry, gestion des versions, alias Production |
+| **API & Serving** | FastAPI, Pydantic, Uvicorn, endpoints REST documentés |
+| **Monitoring** | Prometheus, Grafana, détection de drift (KS-test + PSI) |
+| **Containerisation** | Docker Compose, 6 services orchestrés, multi-stage Dockerfile |
+| **Orchestration** | Kubernetes (Kustomize), stratégie Canary, HPA |
+| **Qualité** | Tests unitaires & intégration, 20+ assertions, CI-ready |
+
+### Résultats clés
+
+- **XGBoost** : MAE = 3.07 cycles, R² = 0.988 sur le dataset NASA C-MAPSS
+- Cross-validation 5-fold : MAE = 9.53 ± 0.80 (robustesse confirmée)
+- Latence API p95 < 10ms
+- `make docker-up` → stack complète en < 60 secondes
+
+### Stack complète
+
+```
+Python 3.13 · XGBoost · LightGBM · PyTorch · MLflow · FastAPI
+PostgreSQL · MinIO · Prometheus · Grafana · Docker · Kubernetes
+```
+
+### Reproduire le projet
+
+```bash
+git clone https://github.com/CATOU-INOV/Projet_file_rouge_IA.git
+cd Projet_file_rouge_IA
+make setup
+make data
+make docker-up
+# Puis ouvrir http://localhost:8000/docs
+```
+
+### Démo rapide — dégradation d'un moteur
+
+```bash
+for cycle in 10 50 100 150 180; do
+  echo -n "cycle=$cycle → "
+  curl -s -X POST http://localhost:8000/predict \
+    -H "Content-Type: application/json" \
+    -d "{\"unit_id\":1,\"cycle\":$cycle,\"setting_1\":-0.0007,\"setting_2\":-0.0004,\"setting_3\":100.0,\"sensor_2\":641.82,\"sensor_3\":1589.70,\"sensor_4\":1400.60,\"sensor_7\":14.62,\"sensor_8\":21.61,\"sensor_9\":554.36,\"sensor_11\":2388.02,\"sensor_12\":9046.19,\"sensor_13\":1.30,\"sensor_14\":47.47,\"sensor_15\":521.66,\"sensor_17\":2388.02,\"sensor_20\":39.06,\"sensor_21\":23.419}" \
+    | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'RUL={d[\"predicted_rul\"]}')"
+done
+```
+
+Résultat attendu :
+```
+cycle=10  → RUL=125.06   ✅ moteur neuf
+cycle=50  → RUL=126.08   ✅ nominal
+cycle=100 → RUL=92.0     🟡 début de dégradation
+cycle=150 → RUL=42.06    🟠 alerte
+cycle=180 → RUL=11.98    🔴 intervention urgente
+```

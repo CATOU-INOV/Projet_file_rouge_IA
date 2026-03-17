@@ -9,9 +9,8 @@ scipy>=1.14.0
 xgboost>=2.1.1
 lightgbm>=4.5.0
 
-# Deep Learning (optionnel – requis pour LSTM/CNN1D)
-tensorflow>=2.17.0; python_version < "3.13"
-tensorflow-cpu>=2.17.0; python_version < "3.13"
+# Deep Learning (compatible Python 3.13)
+torch>=2.5.0
 
 # MLOps
 mlflow>=2.16.0

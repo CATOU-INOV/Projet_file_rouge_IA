@@ -46,7 +46,7 @@ docker-build:
 
 docker-up:
 	docker compose up -d
-	@echo "MLflow     http://localhost:5000"
+	@echo "MLflow     http://localhost:5001"
 	@echo "API        http://localhost:8000/docs"
 	@echo "Prometheus http://localhost:9090"
 	@echo "Grafana    http://localhost:3000 (admin/admin)"

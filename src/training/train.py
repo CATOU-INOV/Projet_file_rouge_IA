@@ -84,11 +84,12 @@ def train_tabular(model_name: str, **kw) -> dict:
 
 
 def train_deep_learning(model_name: str, **kw) -> dict:
-    """Entraîner un modèle Deep Learning (LSTM/CNN1D) avec MLflow tracking."""
-    import mlflow.tensorflow
-    # Import pour déclencher l'enregistrement dans la factory
-    from src.models import deep_learning  # noqa: F401
-    from src.models.deep_learning import get_dl_callbacks
+    """Entraîner un modèle Deep Learning (LSTM/CNN1D) avec MLflow tracking (PyTorch)."""
+    import torch
+    import torch.nn as nn
+    from torch.utils.data import TensorDataset, DataLoader
+    import mlflow.pytorch
+    from src.models import deep_learning  # noqa: F401 – enregistrement factory
 
     _setup_mlflow()
 
@@ -104,6 +105,15 @@ def train_deep_learning(model_name: str, **kw) -> dict:
     X_train, X_val = X_seq[:split], X_seq[split:]
     y_train, y_val = y_seq[:split], y_seq[split:]
 
+    X_train_t = torch.tensor(X_train, dtype=torch.float32)
+    y_train_t = torch.tensor(y_train, dtype=torch.float32)
+    X_val_t = torch.tensor(X_val, dtype=torch.float32)
+    y_val_t = torch.tensor(y_val, dtype=torch.float32)
+
+    train_loader = DataLoader(
+        TensorDataset(X_train_t, y_train_t), batch_size=64, shuffle=True
+    )
+
     with mlflow.start_run(run_name=model_name) as run:
         model = get_model(model_name, n_features=n_features, seq_len=SEQUENCE_LENGTH)
 
@@ -112,32 +122,69 @@ def train_deep_learning(model_name: str, **kw) -> dict:
         mlflow.log_param("sequence_length", SEQUENCE_LENGTH)
         mlflow.log_param("n_train_sequences", len(X_train))
 
-        callbacks = get_dl_callbacks(patience=10, max_minutes=15)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, factor=0.5, patience=5, min_lr=1e-6
+        )
+        criterion = nn.MSELoss()
+
+        best_val_loss = float("inf")
+        patience, patience_counter = 10, 0
+        best_state = None
+        max_seconds = 15 * 60
+        start_time = time.time()
+        epochs_trained = 0
 
         t0 = time.time()
-        history = model.fit(
-            X_train, y_train,
-            validation_data=(X_val, y_val),
-            epochs=100,
-            batch_size=64,
-            callbacks=callbacks,
-            verbose=1,
-        )
+        for epoch in range(100):
+            model.train()
+            for xb, yb in train_loader:
+                optimizer.zero_grad()
+                loss = criterion(model(xb), yb)
+                loss.backward()
+                optimizer.step()
+
+            model.eval()
+            with torch.no_grad():
+                val_loss = criterion(model(X_val_t), y_val_t).item()
+
+            scheduler.step(val_loss)
+            epochs_trained = epoch + 1
+            print(f"Epoch {epoch + 1}/100 — val_loss={val_loss:.4f}")
+
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                patience_counter = 0
+                best_state = {k: v.clone() for k, v in model.state_dict().items()}
+            else:
+                patience_counter += 1
+
+            if patience_counter >= patience:
+                print(f"Early stopping à l'epoch {epoch + 1}")
+                break
+            if time.time() - start_time > max_seconds:
+                print(f"Temps max ({max_seconds}s) atteint")
+                break
+
         train_time = time.time() - t0
 
+        if best_state:
+            model.load_state_dict(best_state)
+
         # Métriques
+        model.eval()
         t_pred = time.time()
-        y_pred = model.predict(X_val, verbose=0).flatten()
+        with torch.no_grad():
+            y_pred = model(X_val_t).numpy()
         latency_ms = (time.time() - t_pred) / max(len(X_val), 1) * 1000
 
         metrics = compute_metrics(y_val, y_pred)
         metrics["train_time_s"] = round(train_time, 2)
         metrics["latency_ms_per_sample"] = round(latency_ms, 4)
-        metrics["epochs_trained"] = len(history.history["loss"])
+        metrics["epochs_trained"] = epochs_trained
 
         mlflow.log_metrics(metrics)
-
-        mlflow.tensorflow.log_model(
+        mlflow.pytorch.log_model(
             model,
             artifact_path="model",
             registered_model_name=MODEL_NAME,

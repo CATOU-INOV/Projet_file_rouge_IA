@@ -75,7 +75,9 @@ services:
 
   # ── MLflow Tracking Server ────────────────────────────────────────────────
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.16.0
+    build:
+      context: .
+      dockerfile: docker/mlflow.Dockerfile
     container_name: mlops-mlflow
     depends_on:
       postgres:
@@ -83,17 +85,17 @@ services:
       minio-init:
         condition: service_completed_successfully
     command: >
-      mlflow server
-        --backend-store-uri postgresql://${POSTGRES_USER:-mlflow}:${POSTGRES_PASSWORD:-mlflow}@postgres:5432/${POSTGRES_DB:-mlflow}
-        --artifacts-destination s3://mlflow/
-        --host 0.0.0.0
-        --port 5000
+      --backend-store-uri postgresql://${POSTGRES_USER:-mlflow}:${POSTGRES_PASSWORD:-mlflow}@postgres:5432/${POSTGRES_DB:-mlflow}
+      --artifacts-destination s3://mlflow/
+      --host 0.0.0.0
+      --port 5000
+      --allowed-hosts "*"
     environment:
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minioadmin}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
     ports:
-      - "5000:5000"
+      - "5001:5000"
     networks:
       - mlops-net
     healthcheck:
@@ -146,7 +148,7 @@ services:
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
-      - "9090:9090"
+      - "9091:9090"
     networks:
       - mlops-net
     healthcheck:
